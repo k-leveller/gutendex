@@ -296,7 +296,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         try:
-            date_and_time = strftime('%H:%M:%S on %B %d, %Y')
+            date_and_time = strftime('%H:%M:%S %Z %z on %B %d, %Y')
             log('Starting script at', date_and_time)
 
             log('  Making temporary directory...')
