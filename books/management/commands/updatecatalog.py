@@ -367,4 +367,4 @@ class Command(BaseCommand):
             log('')
             shutil.rmtree(TEMP_PATH)
 
-        send_log_email()
+        #send_log_email()
