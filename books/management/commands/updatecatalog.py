@@ -39,12 +39,6 @@ def get_directory_set(path):
 
 def log(*args):
     print(*args)
-    # if not os.path.exists(LOG_DIRECTORY):
-    #     os.makedirs(LOG_DIRECTORY)
-    # with open(LOG_PATH, "a") as log_file:
-    #     text = " ".join(args) + "\n"
-    #     log_file.write(text)
-
 
 def put_catalog_in_db():
     book_ids = []
@@ -367,4 +361,3 @@ class Command(BaseCommand):
             log('')
             shutil.rmtree(TEMP_PATH)
 
-        #send_log_email()
