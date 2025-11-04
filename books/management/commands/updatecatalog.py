@@ -2,6 +2,7 @@ from subprocess import call
 import json
 import os
 import shutil
+import time
 from time import strftime
 import sys
 import urllib.request
@@ -39,6 +40,51 @@ def get_directory_set(path):
 
 def log(*args):
     print(*args)
+
+def write_catalog_json():
+    start_time = time.time()
+    book_ids = []
+    for directory_item in os.listdir(settings.CATALOG_RDF_DIR):
+        item_path = os.path.join(settings.CATALOG_RDF_DIR, directory_item)
+        if os.path.isdir(item_path):
+            try:
+                book_id = int(directory_item)
+            except ValueError:
+                # Ignore the item if it's not a book ID number.
+                pass
+            else:
+                book_ids.append(book_id)
+    book_ids.sort()
+    book_directories = [str(id) for id in book_ids]
+
+    write_batch = []
+    for directory in book_directories:
+        id = int(directory)
+
+        if (id > 0) and (id % 5000 == 0):
+            log('Writing    %d' % id)
+
+        book_path = os.path.join(
+            settings.CATALOG_RDF_DIR,
+            directory,
+            'pg' + directory + '.rdf'
+        )
+
+        if not os.path.exists("json"):
+            os.makedirs("json")
+
+        book = utils.get_book(id, book_path)
+        write_batch.append(book)
+        if len(write_batch) <= 100:
+            continue
+        else:
+            with open("json/pg" + directory + ".json", "w") as f:
+                f.write(json.dumps(write_batch))
+                write_batch = []
+    end_time = time.time()
+    duration = end_time - start_time
+    print(f"Writing json took: {duration:.2f} seconds")
+
 
 def put_catalog_in_db():
     book_ids = []
@@ -294,15 +340,18 @@ class Command(BaseCommand):
             log('Starting script at', date_and_time)
 
             log('  Making temporary directory...')
-            if os.path.exists(TEMP_PATH):
-                raise CommandError(
-                    'The temporary path, `' + TEMP_PATH + '`, already exists.'
-                )
-            else:
+            if not os.path.exists(TEMP_PATH):
+                #    raise CommandError(
+                #    'The temporary path, `' + TEMP_PATH + '`, already exists.'
+                #)
+                #else:
                 os.makedirs(TEMP_PATH)
 
-            log('  Downloading compressed catalog...')
-            urllib.request.urlretrieve(URL, DOWNLOAD_PATH)
+            if os.path.exists(DOWNLOAD_PATH):
+                log(f'  Using cached catalog: {DOWNLOAD_PATH}')
+            else:
+                log(f'  Downloading compressed catalog to {DOWNLOAD_PATH}')
+                urllib.request.urlretrieve(URL, DOWNLOAD_PATH)
 
             log('  Decompressing catalog...')
             if not os.path.exists(DOWNLOAD_PATH):
@@ -348,11 +397,12 @@ class Command(BaseCommand):
                         stderr=log_file
                     )
 
-            log('  Putting the catalog in the database...')
-            put_catalog_in_db()
-
-            log('  Removing temporary files...')
-            shutil.rmtree(TEMP_PATH)
+            #log('  Putting the catalog in the database...')
+            #put_catalog_in_db()
+            log('   Writing catalog to files...')
+            write_catalog_json()
+            #log('  Removing temporary files...')
+            #shutil.rmtree(TEMP_PATH)
 
             log('Done!\n')
         except Exception as error:
